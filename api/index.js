@@ -1,6 +1,6 @@
 import express from 'express';
 import assert from 'assert';
-import {MongoClient} from 'mongodb';
+import {MongoClient, ObjectID} from 'mongodb';
 import config from '../config';
 
 const router = express.Router();
@@ -16,7 +16,6 @@ router.get('/contests', (req, res) => {
   mdb.collection('contests')
       .find({})
       .project({
-        id: 1,
         categoryName: 1,
         contestName: 1
       })
@@ -26,34 +25,59 @@ router.get('/contests', (req, res) => {
           res.send({contests});
           return;
         }
-        if (!contests[contest.id]) {
-          contests[contest.id] = contest;
+        if (!contests[contest._id]) {
+          contests[contest._id] = contest;
         }
       });
 });
 
 router.get('/names/:nameIds', (req, res) => {
-  const nameIds = req.params.nameIds.split(',').map(Number);
+  const nameIds = req.params.nameIds.split(',').map(ObjectID);
   let names = {};
   mdb.collection('names')
-      .find({id: {$in: nameIds}})
+      .find({_id: {$in: nameIds}})
       .each((err, name) => {
         assert.equal(null, err);
         if (!name) {
           res.send({names});
           return;
         }
-        names[name.id] = name;
+        names[name._id] = name;
       });
 });
 
 router.get('/contests/:contestId', (req, res) => {
   mdb.collection('contests')
-     .findOne({id: +req.params.contestId})
+     .findOne({_id: ObjectID(req.params.contestId)})
      .then((contest) => {
        return res.send(contest);
      })
      .catch(console.error);
+});
+
+router.post('/names', (req, res) => {
+  const contestId = ObjectID(req.body.contestId);
+  const name = req.body.name;
+  if (!name) {
+    res.status(404).send('Please Enter a valid Name!');
+    return;
+  }
+  mdb.collection('names').insertOne({name}).then((result) => {
+    mdb.collection('contests').findAndModify(
+      {_id: contestId},
+      [],
+      {$push: {nameIds: result.insertedId}},
+      {new:true}
+    ).then((doc) => {
+      res.send({
+        updatedContest: doc.value,
+        newName: { _id: result.insertedId, name }
+      });
+    }).catch((error) => {
+      console.error(error);
+      res.status(404).send('Bad request');
+    });
+  });
 });
 
 export default router;

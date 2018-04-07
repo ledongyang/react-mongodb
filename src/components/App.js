@@ -3,6 +3,7 @@ import Header from './Header';
 import ContestList from './ContestList';
 import Contest from './Contest';
 import * as api from '../api';
+import { isError } from 'util';
 
 const pushState = (obj, url) => {
   return window.history.pushState(obj, '', url);
@@ -17,13 +18,19 @@ class App extends Component {
     initialData: React.PropTypes.object.isRequired
   }
 
-  state = this.props.initialData
+  state = {...this.props.initialData, error: ''}
 
   componentDidMount() {
     onPopState((event) => {
       this.setState({
         currentContestId: (event.state || {}).currentContestId
       });
+    });
+  }
+
+  clearError = () => {
+    this.setState({
+      error: ''
     });
   }
 
@@ -35,10 +42,10 @@ class App extends Component {
     api.fetchContest(contestId)
         .then((contest) => {
           this.setState({
-            currentContestId: contest.id,
+            currentContestId: contest._id,
             contests: {
               ...this.state.contests,
-              [contest.id]: contest
+              [contest._id]: contest
             }
           });
         })
@@ -62,6 +69,9 @@ class App extends Component {
 
   fetchNames = (nameIds) => {
     if (nameIds.length === 0) {
+      this.setState({
+        names: []
+      });
       return;
     }
     api.fetchNames(nameIds).then((names) => {
@@ -91,10 +101,41 @@ class App extends Component {
     }
   }
 
+  addNewName = (newName, contestId) => {
+    this.clearError();
+    if (!newName) {
+      this.setState({
+        error: 'Please enter a valid name!'
+      });
+      return;
+    }
+    api.addNewName(newName, contestId).then((resp) => {
+      if (isError(resp)) {
+        this.setState({
+          error: resp.toString()
+        });
+        return;
+      }
+      this.setState({
+        contests: {
+          ...this.state.contests,
+          [resp.updatedContest._id]: resp.updatedContest
+        },
+        names: {
+          ...this.state.names,
+          [resp.newName._id]: resp.newName
+        }
+      });
+    })
+    .catch(console.error);
+  }
+
   currentContent = () => {
     if (this.state.currentContestId) {
       return (
         <Contest
+          error={this.state.error}
+          addNewName={this.addNewName}
           fetchNames={this.fetchNames}
           lookUpNames={this.lookUpNames}
           contestListClick={this.fetchContestList}

@@ -7,8 +7,16 @@ class Contest extends Component {
     fetchNames(nameIds);
   }
 
+  handleSubmit = (event) => {
+    event.preventDefault();
+    const {addNewName, _id} = this.props;
+    let newName = this.refs.newNameInput.value;
+    addNewName(newName, _id);
+    this.refs.newNameInput.value = '';
+  }
+
   render() {
-    const {description, contestListClick, lookUpNames} = this.props;
+    const {description, contestListClick, lookUpNames, error} = this.props;
     const names = lookUpNames();
     return (
       <div className="Contest">
@@ -31,7 +39,7 @@ class Contest extends Component {
             <ul className="list-group">
               {
                 names.map((name) => {
-                  return <li key={name.id} className="list-group-item">{name.name}</li>;
+                  return <li key={name._id} className="list-group-item">{name.name}</li>;
                 })
               }
             </ul>
@@ -43,13 +51,21 @@ class Contest extends Component {
             <h3 className="panel-title">Propose a New Name</h3>
           </div>
           <div className="panel-body">
-            <form>
+            <form onSubmit={this.handleSubmit}>
               <div className="input-group">
-                <input type="text" placeholder="New Name Here..." className="form-control" />
+                <input
+                  type="text"
+                  placeholder="New Name Here..."
+                  className="form-control"
+                  ref="newNameInput"/>
                 <span className="input-group-btn">
-                  <button type="submit" className="btn btn-info">Sumbit</button>
+                  <button
+                    type="submit"
+                    className="btn btn-info"
+                  >Sumbit</button>
                 </span>
               </div>
+              {error && <div style={{color: 'red'}}>{error}</div>}
             </form>
           </div>
         </div>
@@ -68,7 +84,10 @@ Contest.propTypes = {
   contestListClick: React.PropTypes.func.isRequired,
   fetchNames: React.PropTypes.func.isRequired,
   nameIds: React.PropTypes.array.isRequired,
-  lookUpNames:  React.PropTypes.func.isRequired
+  lookUpNames:  React.PropTypes.func.isRequired,
+  addNewName: React.PropTypes.func.isRequired,
+  _id: React.PropTypes.string.isRequired,
+  error: React.PropTypes.string.isRequired,
 };
 
 export default Contest;

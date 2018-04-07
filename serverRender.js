@@ -16,7 +16,7 @@ const getInitialData = (contestId, apiData) => {
     return {
       currentContestId: contestId,
       contests: {
-        [apiData.id]: apiData
+        [apiData._id]: apiData
       }
     };
   }
